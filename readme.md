@@ -9,5 +9,3 @@ This is a fabfile for [Fabric](https://github.com/fabric/fabric) that makes inst
 ## Cool things
 - It automatically creates a more secure wp-config.php file when you install WP. It creates and replaces the `salt` stuff, and it creates a randomly generated `wp_` prefix instead of the default.
 - I'm super stoked about the git stuff in the wordpress function. It automatically grabs the latest stable tag from WordPress' [github mirror](http://github.com/WordPress/WordPress), a feat other people said wasn't possible. I thumb my nose at thee!
-
-## Usage
