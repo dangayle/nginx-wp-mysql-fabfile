@@ -18,3 +18,6 @@ This is a fabfile for [Fabric](https://github.com/fabric/fabric) that makes inst
 
     # Creating new NGINX server
     fab -H <host> nginx:<www.domain.com>
+
+## License
+MIT Copyright (c) 2012 Dan Gayle

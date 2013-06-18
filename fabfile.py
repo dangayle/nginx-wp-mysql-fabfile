@@ -34,7 +34,7 @@ def wp_salt(*args):
     '''
     Salts for WordPress wp-config.php
     '''
-    match = r"[\",',\\]"
+    match = r"[\",',\\,\*,\/]"
     charset = re.sub(match, 'x', ascii_letters + punctuation)
     return "'" + ''.join(choice(charset) for x in range(64)) + "'"
 
