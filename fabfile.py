@@ -14,7 +14,7 @@ def _check_sudo():
             run('apt-get update && apt-get install -y sudo')
 
 
-def credentials(domain):
+def create_credentials(domain):
     return {
         "user": domain.replace('.', '')[:16],
         "password": urandom(16).encode('hex')[:13],
@@ -22,41 +22,40 @@ def credentials(domain):
     }
 
 
-def wp_prefix(*args):
-    '''
+def wp_prefix():
+    """
     New database prefix for WordPress wp-config.php
-    '''
+    """
+    return '"{0}_"'.format(''.join(choice(ascii_letters) for x in range(2)))
 
-    return '"' + ''.join(choice(ascii_letters) for x in range(2)) + '_"'
 
-
-def wp_salt(*args):
-    '''
+def wp_salt():
+    """
     Salts for WordPress wp-config.php
-    '''
+    """
     match = r"[\",',\\,\*,\/]"
     charset = re.sub(match, 'x', ascii_letters + punctuation)
     return "'" + ''.join(choice(charset) for x in range(64)) + "'"
 
 
-def setup_database(c):
-    '''
+def setup_database(credentials):
+    """
     Creates mysql database using credentials
-    '''
+    """
 
     with settings(warn_only=True):
-        if sudo('mysqladmin create ' + c['dbname']).failed:
-            sudo('mysqladmin drop ' + c['dbname'])
-            sudo('mysqladmin create ' + c['dbname'])
+        if sudo('mysqladmin create ' + credentials['dbname']).failed:
+            sudo('mysqladmin drop ' + credentials['dbname'])
+            sudo('mysqladmin create ' + credentials['dbname'])
 
-    sql = 'echo "GRANT ALL PRIVILEGES ON {0}.* TO \'{1}\'@localhost IDENTIFIED BY \'{2}\';" | mysql'
-    sudo(sql.format(c['dbname'], c['user'], c['password']))
+    sql = """echo "GRANT ALL PRIVILEGES ON {dbname}.* TO '{user}'@localhost IDENTIFIED BY '{password}';" | mysql"""
+    sudo(sql.format(**credentials))
 
 
 def www(domain):
-    '''
+    """
     Create new www file directory
-    '''
+    """
 
     with cd("/var/www/"):
         run("mkdir " + domain)
@@ -65,11 +64,11 @@ def www(domain):
 
 
 def nginx(domain):
-    '''
+    """
     Create new PHP NGINX server in /etc/nginx/ with web directory at /var/www
-    '''
+    """
 
-    default_config = '''
+    default_config = """
     server {{
         server_name {1};
         return 301 $scheme://{0}$request_uri;
@@ -88,7 +87,7 @@ def nginx(domain):
         include /etc/nginx/www_params;
         include /etc/nginx/fastcgi_php;
     }}
-    '''
+    """
     new_config = default_config.format(domain, domain[4:])
 
     with cd('/etc/nginx/sites-available/'):
@@ -107,23 +106,23 @@ def nginx(domain):
 
 
 def wordpress(domain):
-    '''
+    """
     Installs WordPress, including NGINX config, DB, and wp-config.php
-    '''
+    """
 
-    c = credentials(domain)
+    credentials = create_credentials(domain)
     wp_config = StringIO()
     match = {
         "user": 'username_here',
         "password": 'password_here',
         "dbname": 'database_name_here',
-        'phrase': "'put your unique phrase here'",
-        'prefix': "'wp_'"
+        "phrase": "'put your unique phrase here'",
+        "prefix": "'wp_'"
     }
 
     nginx(domain)
     # www(domain)
-    setup_database(c)
+    setup_database(credentials)
 
     with cd('/var/www/' + domain):
         # clone wordpress
@@ -135,11 +134,11 @@ def wordpress(domain):
         new_config = wp_config.getvalue()
 
         for key in match:
-            if 'phrase' in key:
+            if "phrase" in key:
                 new_config = re.sub(match[key], wp_salt, new_config)
-            elif 'prefix' in key:
+            elif "prefix" in key:
                 new_config = re.sub(match[key], wp_prefix, new_config)
             else:
-                new_config = re.sub(match[key], c[key], new_config)
+                new_config = re.sub(match[key], credentials[key], new_config)
 
         put(StringIO(new_config), "wp-config.php")
